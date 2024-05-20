@@ -213,7 +213,7 @@ const Box = props =>
   // const ref = useRef();
   const texture = useLoader(
     THREE.TextureLoader, 
-    process.env.PUBLIC_URP + '/roof_tile_base_color.png'
+    process.env.PUBLIC_URL + '/roof_tile_base_color.png'
   );
   // useFrame(state => {
   //   ref.current.rotation.x += 0.005;
@@ -291,7 +291,7 @@ const Floor = props => {
 
   const distortTexture = useLoader(
     THREE.TextureLoader, 
-    process.env.PUBLIC_URP + '/distort.png'
+    process.env.PUBLIC_URL + '/distort.png'
   );
 
   return(
@@ -371,12 +371,12 @@ const Background = props => {
     }
   })
 
-  const texture = useLoader(RGBELoader, process.env.PUBLIC_URP + '/poly_haven_studio_2k.hdr')
+  const texture = useLoader(RGBELoader, process.env.PUBLIC_URL + '/poly_haven_studio_2k.hdr')
   return(
     <Environment 
     background={true} 
     // files={['industrial_room.exr']} 
-    // path={process.env.PUBLIC_URP + '/'}
+    // path={process.env.PUBLIC_URL + '/'}
     environmentIntensity={envIntensity}
     backgroundBlurriness={blur}
     backgroundIntensity={bgIntensity}
@@ -428,11 +428,17 @@ const CameraControls = ({}) => {
   useFrame(({camera, scene}) => {
     if(state.shouldUpdate)
     {
+      scene.orbitControls.saveState()
       camera.position.lerp(state.cameraPos, 0.025)
       scene.orbitControls.target.lerp(state.target, 0.025)
       scene.orbitControls.update()
       const diff = camera.position.clone().sub(state.cameraPos).length()
-      if(diff < 0.1) state.shouldUpdate = false;
+      if(diff < 0.1)
+      {
+        state.shouldUpdate = false;
+        // scene.orbitControls.target.set([0,0,0])
+        scene.orbitControls.reset()
+      } 
     }
     
   })
@@ -581,13 +587,13 @@ function App() {
         {/* <axesHelper args={[5]}/> */}
 
         <RefractionCup 
-            path={process.env.PUBLIC_URP + '/cup.gltf'}
+            path={process.env.PUBLIC_URL + '/cup.gltf'}
             scale={new Array(3).fill(0.09)}
           />
 
           {/* <Suspense fallback={null}> */}
           <Model 
-            path={process.env.PUBLIC_URP + '/coffemachine.gltf'}
+            path={process.env.PUBLIC_URL + '/coffemachine.gltf'}
             scale={new Array(3).fill(5)}
           />
         {/* </Suspense> */}
@@ -620,7 +626,7 @@ function App() {
         
         {/* <Suspense fallback={null}> */}
           {/* <Cup 
-            path=process.env.PUBLIC_URP + '/cup.gltf'
+            path=process.env.PUBLIC_URL + '/cup.gltf'
             scale={new Array(3).fill(5)}
           /> */}
 
