@@ -11,7 +11,7 @@ import { DragControls } from 'three/examples/jsm/controls/DragControls';
 import {Physics, useBox} from '@react-three/cannon'
 import { Bloom, DepthOfField, EffectComposer, Noise, Vignette, ToneMapping, SSAO, SMAA, HueSaturation, ChromaticAberration } from '@react-three/postprocessing'
 import {BlendFunction} from 'postprocessing'
-import {useControls} from 'leva'
+import {useControls, button, buttonGroup, folder} from 'leva'
 import { 
   MeshReflectorMaterial, 
   MeshRefractionMaterial, 
@@ -19,7 +19,9 @@ import {
   Caustics ,
   MeshTransmissionMaterial,
   RandomizedLight,
+  CameraControls
 } from '@react-three/drei';
+import { N8AO } from '@react-three/postprocessing';
 extend({OrbitControls, DragControls})
 
 const BoudingBox = ({
@@ -66,9 +68,6 @@ const RefractionCup = props => {
     anisotropy:{
       min:0, max:1, value:1, step:0.01
     },
-    transmission:{
-      min:0, max:1, value:1, step:0.01
-    },
     chromaticAberration:{
       min:0, max:1, value:0.03, step:0.01
     },
@@ -81,7 +80,7 @@ const RefractionCup = props => {
       {
         child.castShadow = true
         child.receiveShadow = true
-        child.material.side = THREE.DoubleSide
+        child.material.side = THREE.FrontSide
       }
   })
 
@@ -95,7 +94,7 @@ const RefractionCup = props => {
         >
         <MeshTransmissionMaterial 
           transmissionSampler
-          transmission={transmission}
+          transmission={1}
           roughness={0.15}
           metalness={0.1}
           chromaticAberration={chromaticAberration}
@@ -109,7 +108,6 @@ const RefractionCup = props => {
       </mesh>
   )
 }
-
 
 const Cup = props => {
   
@@ -160,6 +158,10 @@ const Model = props =>{
 
 const Orbit =() => {
   const {camera, gl} = useThree();
+  useFrame(({camera, scene}) => {
+    console.log(scene.orbitControls.target)
+  })
+  
   return(
     // <orbitControls attach='orbitControls' args={[camera, gl.domElement]}/>
     <orbitControls attach='orbitControls' args={[camera, gl.domElement]}/>
@@ -424,26 +426,48 @@ const state = {
   shouldUpdate:false
 }
 
-const CameraControls = ({}) => {
-  useFrame(({camera, scene}) => {
-    if(state.shouldUpdate)
-    {
-      scene.orbitControls.saveState()
-      camera.position.lerp(state.cameraPos, 0.025)
-      scene.orbitControls.target.lerp(state.target, 0.025)
-      scene.orbitControls.update()
-      const diff = camera.position.clone().sub(state.cameraPos).length()
-      if(diff < 0.1)
-      {
-        state.shouldUpdate = false;
-        // scene.orbitControls.target.set([0,0,0])
-        scene.orbitControls.reset()
-      } 
-    }
+const Camera = ({}) => {
+  // useFrame(({camera, scene}) => {
+  //   if(state.shouldUpdate)
+  //   {
+  //     camera.position.lerp(state.cameraPos, 0.025)
+  //     scene.orbitControls.target.lerp(state.target, 0.025)
+  //     scene.orbitControls.update()
+  //     const diff = camera.position.clone().sub(state.cameraPos).length()
+  //     if(diff < 0.1)
+  //     {
+  //       state.shouldUpdate = false;
+  //       // scene.orbitControls.target.set([0,0,0])
+  //       scene.orbitControls.update()
+  //     } 
+      
+  //   }
     
+  // })
+  const cameraControlRef = useRef()
+  const { camera } = useThree()
+
+  const sets = {
+    1:{
+      cameraPos: [2,1.5,2],
+      target:[0.1,0.5,-0.1]
+    },
+    2:{
+      cameraPos:[-2,1.5,2],
+      target:[-0.1,0.5,-0.1]
+    }
+  }
+
+  const {} = useControls({
+    lookat: folder({
+      '>': button(() => cameraControlRef.current?.setLookAt(...sets[1].cameraPos, ...sets[1].target, true)),
+      '<': button(() => cameraControlRef.current?.setLookAt(...sets[2].cameraPos, ...sets[2].target, true))
+    })
   })
   return(
-    null
+    <CameraControls
+      ref={cameraControlRef}
+    />
   )
 }
 
@@ -505,36 +529,12 @@ const CameraButtons = ({}) => {
 }
 
 function App() {
-  const {luminanceThreshold, luminanceSmoothing, opacity} = useControls('Bloom', {
+  const {opacity} = useControls('Bloom', {
     opacity:{
       min:0,
       max:1,
       value:0.1,
       step:0.01
-    }
-  });
-  const { 
-    middleGrey, 
-    maxLuminance,
-    avgLuminance,
-   } = useControls('ToneMapping', {
-    middleGrey: {
-      min: 0,
-      max: 1,
-      value: 0.8,
-      step: 0.1
-    },
-    maxLuminance: {
-      min: 0,
-      max: 64,
-      value: 16,
-      step: 1
-    },
-    avgLuminance: {
-      min: 0,
-      max: 5,
-      value: 1,
-      step: 0.1
     }
   });
   const {
@@ -573,17 +573,28 @@ function App() {
     ambientLightIntensity:{
       min:0, max:10, value:1, step:0.1
     }
-  })
+  });
+  const {aoColor, aoRadius, aoIntensity} = useControls('AO', {
+    aoColor:{
+      value:'#000000'
+    },
+    aoIntensity:{
+      min:0,max:10,value:0.25,step:0.1
+    },
+    aoRadius:{
+      min:0,max:1,value:0.2,step:0.1
+    }
+  });
   return (
     <div style={{height:"100vh",width:"100vw"}}>
       {/* <ColorPicker/> */}
-      <CameraButtons/>
+      {/* <CameraButtons/> */}
       <Canvas 
         camera={{fov:45}}
         shadows={true}
       >
-        <CameraControls/>
-        <Orbit/>
+        <Camera/>
+        {/* <Orbit/> */}
         {/* <axesHelper args={[5]}/> */}
 
         <RefractionCup 
@@ -633,9 +644,7 @@ function App() {
           
         {/* </Suspense> */}
 
-        <EffectComposer 
-          enableNormalPass
-         >
+        <EffectComposer >
           <DepthOfField focusDistance={0} focalLength={0.1} bokehScale={2} height={480} />
           <Bloom 
             luminanceThreshold={0}
@@ -643,28 +652,24 @@ function App() {
             opacity={opacity} 
             />
           <Vignette eskil={false} offset={0.1} darkness={0.75} />
-          <ToneMapping
+          {/* <ToneMapping
             blendFunction={BlendFunction.NORMAL} 
             adaptive={false} 
             resolution={1024} 
-            middleGrey={middleGrey} 
-            maxLuminance={maxLuminance} 
-            averageLuminance={avgLuminance} 
-            // adaptationRate={1.0} 
-          />
-           {/* <SSAO
-            blendFunction={BlendFunction.MULTIPLY} 
-            samples={61} 
-            rings={4}
-            distanceThreshold={0}
-            distanceFalloff={1} 
-            rangeThreshold={0.1}
-            rangeFalloff={0.1}
-            luminanceInfluence={0.9}
-            radius={50}
-            scale={2}
-            bias={0.5}
+            middleGrey={0.6} 
+            maxLuminance={16} 
+            averageLuminance={1.0} 
+            adaptationRate={1.0} 
           /> */}
+          <N8AO
+            aoSamples={32}
+            denoiseSamples={32}
+            denoiseRadius={8}
+            color={aoColor}
+            aoRadius={aoRadius}
+            intensity={aoIntensity}
+            distanceFalloff={10}
+          />
           {/* <SMAA/> */}
           {/* <HueSaturation
             blendFunction={BlendFunction.NORMAL}
